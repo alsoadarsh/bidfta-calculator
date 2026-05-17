@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BidFTA Calculator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root, [data-theme="dark"] {
+      --bg:        #0b1f2a;
+      --surface:   #112233;
+      --surface2:  #162d3f;
+      --border:    #1e3a4f;
+      --header-bg: #0d3347;
+      --accent:    #f5c842;
+      --accent2:   #e8a020;
+      --teal:      #1a7a8a;
+      --text:      #e8f4f8;
+      --muted:     #7aa5b8;
+      --muted2:    #3a6070;
+      --footer-c:  #2a4a5a;
+      --zero-c:    #1e3a4f;
+      --danger:    #e05555;
+    }
+    [data-theme="light"] {
+      --bg:        #f0f6f9;
+      --surface:   #ffffff;
+      --surface2:  #e8f2f7;
+      --border:    #c8dde8;
+      --header-bg: #0d4f6b;
+      --accent:    #e8a020;
+      --accent2:   #c47800;
+      --teal:      #0d6b7a;
+      --text:      #0d2d3d;
+      --muted:     #4a7a8a;
+      --muted2:    #9abbc8;
+      --footer-c:  #aacad8;
+      --zero-c:    #d0e8f0;
+      --danger:    #c03030;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 0 60px;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    /* ── HEADER ── */
+    header {
+      width: 100%;
+      background: var(--header-bg);
+      border-bottom: 3px solid var(--accent);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header-left { display: flex; align-items: baseline; gap: 10px; }
+    header h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2rem;
+      letter-spacing: 3px;
+      color: #fff;
+      line-height: 1;
+    }
+    header h1 span { color: var(--accent); }
+    .tagline {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.62rem;
+      color: rgba(255,255,255,0.45);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+    .theme-btn {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 20px;
+      padding: 6px 14px;
+      color: #fff;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.78rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .theme-btn:hover { background: rgba(255,255,255,0.22); }
+
+    /* ── CONTAINER ── */
+    .container {
+      width: 100%;
+      max-width: 480px;
+      padding: 22px 16px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    /* ── MODE TOGGLE ── */
+    .mode-toggle {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .mode-btn {
+      padding: 12px;
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .mode-btn.active { background: var(--teal); color: #fff; }
+    .mode-btn:not(.active):hover { color: var(--text); background: var(--surface2); }
+
+    .mode-hint {
+      font-size: 0.74rem;
+      color: var(--muted);
+      text-align: center;
+      padding: 2px 8px;
+      line-height: 1.5;
+    }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: background 0.3s, border-color 0.3s;
+    }
+    .card-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.62rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 13px 16px 0;
+    }
+    .bid-input-wrap {
+      display: flex;
+      align-items: center;
+      padding: 6px 16px 13px;
+      gap: 6px;
+    }
+    .dollar-sign {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2rem;
+      color: var(--accent);
+      line-height: 1;
+    }
+    #bidAmount {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 3rem;
+      color: var(--text);
+      width: 100%;
+      min-width: 0;
+    }
+    #bidAmount::placeholder { color: var(--border); }
+
+    /* ── ITEM FIELDS ── */
+    .item-fields {
+      padding: 0 16px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .field-wrap { position: relative; }
+    .field-wrap input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 8px 10px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .field-wrap input::placeholder { color: var(--muted2); }
+    .field-wrap input:focus { border-color: var(--teal); }
+    .field-hint {
+      font-size: 0.66rem;
+      color: var(--muted2);
+      padding: 2px 2px 0;
+      font-family: 'DM Mono', monospace;
+    }
+    .link-extracted {
+      font-size: 0.7rem;
+      color: var(--teal);
+      padding: 2px 2px 0;
+      font-family: 'DM Mono', monospace;
+      display: none;
+    }
+    .link-extracted.show { display: block; }
+
+    /* ── REVERSE TOGGLE ── */
+    .reverse-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: var(--surface2);
+      border-top: 1px solid var(--border);
+      cursor: pointer;
+      user-select: none;
+    }
+    .reverse-toggle input[type="checkbox"] { display: none; }
+    .toggle-track {
+      width: 34px; height: 18px;
+      background: var(--border);
+      border-radius: 9px;
+      position: relative;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .toggle-track::after {
+      content: '';
+      position: absolute;
+      width: 12px; height: 12px;
+      background: var(--muted);
+      border-radius: 50%;
+      top: 3px; left: 3px;
+      transition: all 0.2s;
+    }
+    .reverse-toggle.on .toggle-track { background: var(--accent2); }
+    .reverse-toggle.on .toggle-track::after { left: 19px; background: #fff; }
+    .reverse-toggle span { font-size: 0.78rem; color: var(--muted); }
+    .reverse-toggle.on span { color: var(--accent); }
+
+    /* ── REVERSE RESULT ── */
+    .reverse-result {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 8px;
+      padding: 13px 16px;
+      display: none;
+    }
+    .reverse-result.show { display: block; }
+    .reverse-result p {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.62rem;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .reverse-result strong {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2.2rem;
+      color: var(--accent);
+      letter-spacing: 1px;
+    }
+
+    /* ── BREAKDOWN ── */
+    .breakdown {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .breakdown-title {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.62rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 13px 16px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .breakdown-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 11px 16px;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+    }
+    .breakdown-row:hover { background: var(--surface2); }
+    .row-label { font-size: 0.84rem; color: var(--muted); }
+    .row-label small {
+      display: block;
+      font-size: 0.68rem;
+      color: var(--muted2);
+      margin-top: 2px;
+    }
+    .row-value {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.95rem;
+      color: var(--text);
+    }
+    .row-value.zero { color: var(--zero-c); }
+    .total-row {
+      background: var(--teal);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px;
+    }
+    .total-label {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.35rem;
+      letter-spacing: 1px;
+      color: #fff;
+    }
+    .total-value {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2rem;
+      color: var(--accent);
+      letter-spacing: 1px;
+    }
+
+    /* ── ADD BUTTON ── */
+    .add-btn {
+      width: 100%;
+      padding: 14px;
+      background: var(--accent);
+      border: none;
+      border-radius: 10px;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.2rem;
+      letter-spacing: 2px;
+      color: #0b1f2a;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .add-btn:hover { background: var(--accent2); }
+    .add-btn:active { transform: scale(0.98); }
+    .add-btn:disabled {
+      background: var(--border);
+      color: var(--muted2);
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* ── TALLY SECTION ── */
+    .tally-section { display: flex; flex-direction: column; gap: 12px; }
+    .tally-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .tally-header-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.62rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tally-count-badge {
+      background: var(--teal);
+      color: #fff;
+      border-radius: 10px;
+      padding: 2px 8px;
+      font-size: 0.6rem;
+    }
+    .clear-btn {
+      background: transparent;
+      border: 1px solid var(--danger);
+      color: var(--danger);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.72rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .clear-btn:hover { background: var(--danger); color: #fff; }
+
+    /* ── TALLY LIST ── */
+    .tally-list {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .tally-empty {
+      padding: 26px 16px;
+      text-align: center;
+      font-size: 0.78rem;
+      color: var(--muted2);
+      font-family: 'DM Mono', monospace;
+      letter-spacing: 0.5px;
+      line-height: 1.8;
+    }
+
+    /* ── TALLY ITEM (collapsible) ── */
+    .tally-item {
+      border-bottom: 1px solid var(--border);
+      animation: slideIn 0.2s ease;
+    }
+    .tally-item:last-child { border-bottom: none; }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Summary row (always visible, clickable) */
+    .tally-item-summary {
+      display: flex;
+      align-items: center;
+      padding: 11px 14px;
+      gap: 10px;
+      cursor: pointer;
+      transition: background 0.15s;
+      user-select: none;
+    }
+    .tally-item-summary:hover { background: var(--surface2); }
+
+    .tally-chevron {
+      font-size: 0.65rem;
+      color: var(--muted2);
+      transition: transform 0.2s;
+      flex-shrink: 0;
+      width: 12px;
+      text-align: center;
+    }
+    .tally-item.open .tally-chevron { transform: rotate(90deg); }
+
+    .tally-item-info { flex: 1; min-width: 0; }
+    .tally-item-name-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tally-item-name {
+      font-size: 0.84rem;
+      color: var(--text);
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .tally-item-link {
+      color: var(--teal);
+      font-size: 0.72rem;
+      text-decoration: none;
+      flex-shrink: 0;
+      opacity: 0.8;
+      transition: opacity 0.15s;
+    }
+    .tally-item-link:hover { opacity: 1; }
+    .tally-item-meta {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.64rem;
+      color: var(--muted2);
+      margin-top: 2px;
+    }
+    .tally-type-badge {
+      font-size: 0.58rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--surface2);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .tally-item-total {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.92rem;
+      color: var(--text);
+      font-weight: 500;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .tally-remove {
+      background: transparent;
+      border: none;
+      color: var(--muted2);
+      cursor: pointer;
+      font-size: 0.9rem;
+      padding: 3px 5px;
+      border-radius: 4px;
+      transition: color 0.15s, background 0.15s;
+      flex-shrink: 0;
+    }
+    .tally-remove:hover { color: var(--danger); background: var(--surface2); }
+
+    /* Expanded breakdown (hidden by default) */
+    .tally-item-detail {
+      display: none;
+      background: var(--surface2);
+      border-top: 1px solid var(--border);
+      padding: 10px 16px 12px;
+    }
+    .tally-item.open .tally-item-detail { display: block; }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 0;
+      border-bottom: 1px dashed var(--border);
+    }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-label {
+      font-size: 0.76rem;
+      color: var(--muted);
+    }
+    .detail-value {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.78rem;
+      color: var(--text);
+    }
+    .detail-value.zero { color: var(--zero-c); }
+    .detail-total-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--teal);
+    }
+    .detail-total-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .detail-total-value {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    /* ── GRAND TOTAL ── */
+    .tally-grand {
+      background: var(--header-bg);
+      border: 1px solid var(--teal);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .tally-grand-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .tally-grand-row:last-child { border-bottom: none; }
+    .g-label { font-size: 0.82rem; color: var(--muted); }
+    .g-value {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.9rem;
+      color: var(--text);
+    }
+    .tally-grand-total-row {
+      background: var(--teal);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 16px;
+    }
+    .tally-grand-total-row .g-label {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.3rem;
+      letter-spacing: 1px;
+      color: #fff;
+    }
+    .tally-grand-total-row .g-value {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.8rem;
+      color: var(--accent);
+      letter-spacing: 1px;
+    }
+
+    /* ── COMPARE FIELDS ── */
+    .compare-fields {
+      border-top: 1px solid var(--border);
+      padding: 12px 16px 14px;
+    }
+    .compare-fields-title {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.62rem;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .compare-fields-title span {
+      color: var(--muted2);
+      font-size: 0.58rem;
+      margin-left: 4px;
+    }
+    .compare-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .compare-row .field-wrap input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 8px 10px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.8rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .compare-row .field-wrap input::placeholder { color: var(--muted2); font-size: 0.72rem; }
+    .compare-row .field-wrap input:focus { border-color: var(--teal); }
+
+    /* ── VERDICT ── */
+    .verdict-wrap {
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .verdict-summary {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 14px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s;
+      font-size: 0.84rem;
+      font-weight: 500;
+    }
+    .verdict-summary:hover { background: var(--surface2); }
+    .verdict-summary.good  { background: rgba(74,222,128,0.08); border-bottom: 1px solid rgba(74,222,128,0.15); }
+    .verdict-summary.ok    { background: rgba(245,200,66,0.08); border-bottom: 1px solid rgba(245,200,66,0.15); }
+    .verdict-summary.warn  { background: rgba(251,146,60,0.08); border-bottom: 1px solid rgba(251,146,60,0.15); }
+    .verdict-summary.bad   { background: rgba(224,85,85,0.08);  border-bottom: 1px solid rgba(224,85,85,0.15);  }
+    .verdict-summary.good  .verdict-icon-el { color: #4ade80; }
+    .verdict-summary.ok    .verdict-icon-el { color: var(--accent); }
+    .verdict-summary.warn  .verdict-icon-el { color: #fb923c; }
+    .verdict-summary.bad   .verdict-icon-el { color: var(--danger); }
+    #verdictIcon { font-size: 1rem; flex-shrink: 0; }
+    #verdictText { flex: 1; color: var(--text); }
+    .verdict-chevron {
+      font-size: 0.6rem;
+      color: var(--muted2);
+      transition: transform 0.2s;
+      flex-shrink: 0;
+    }
+    .verdict-wrap.open .verdict-chevron { transform: rotate(90deg); }
+    .verdict-wrap.open .verdict-summary { border-bottom: 1px solid var(--border); }
+
+    .verdict-detail {
+      display: none;
+      background: var(--surface2);
+      padding: 10px 14px 12px;
+    }
+    .verdict-wrap.open .verdict-detail { display: block; }
+
+    .verdict-detail-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 8px;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px dashed var(--border);
+    }
+    .verdict-detail-row:last-of-type { border-bottom: none; }
+    .verdict-detail-you { margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--teal) !important; border-bottom: none !important; }
+    .vd-label { font-size: 0.76rem; color: var(--muted); }
+    .vd-value { font-family: 'DM Mono', monospace; font-size: 0.78rem; color: var(--text); text-align: right; }
+    .vd-saving {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      text-align: right;
+      white-space: nowrap;
+      min-width: 70px;
+    }
+    .vd-saving.good { color: #4ade80; }
+    .vd-saving.warn { color: #fb923c; }
+    .vd-saving.bad  { color: var(--danger); }
+
+    .verdict-warranty {
+      margin-top: 10px;
+      font-size: 0.72rem;
+      color: var(--muted);
+      line-height: 1.5;
+      padding: 8px 10px;
+      background: var(--surface);
+      border-radius: 6px;
+      border-left: 2px solid #fb923c;
+    }
+
+    /* ── PILLS ── */
+    .info-pills { display: flex; flex-wrap: wrap; gap: 7px; }
+    .pill {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.62rem;
+      letter-spacing: 0.8px;
+      padding: 5px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      background: var(--surface);
+    }
+    .pill span { color: var(--accent); }
+
+    /* ── FOOTER ── */
+    footer {
+      margin-top: 28px;
+      text-align: center;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.62rem;
+      color: var(--footer-c);
+      letter-spacing: 1px;
+      line-height: 2.2;
+    }
+    footer a { color: var(--teal); text-decoration: none; }
+    footer a:hover { color: var(--accent); }
+
+    @media (max-width: 400px) {
+      #bidAmount { font-size: 2.4rem; }
+      .total-value { font-size: 1.6rem; }
+      header h1 { font-size: 1.6rem; }
+      .theme-btn span:last-child { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>Bid<span>FTA</span> Calc</h1>
+    <span class="tagline">Fee Calculator</span>
+  </div>
+  <button class="theme-btn" onclick="toggleTheme()">
+    <span id="themeIcon">🌙</span>
+    <span id="themeTxt">Light mode</span>
+  </button>
+</header>
+
+<div class="container">
+
+  <!-- Mode Toggle -->
+  <div class="mode-toggle">
+    <button class="mode-btn active" onclick="setMode('auction')" id="btn-auction">🏷 Auction</button>
+    <button class="mode-btn" onclick="setMode('bins')" id="btn-bins">📦 Bins</button>
+  </div>
+  <p class="mode-hint" id="modeHint">Auction: includes 17.25% buyer's premium + freight surcharge</p>
+
+  <!-- Input Card -->
+  <div class="card">
+    <div class="card-label" id="inputLabel">YOUR BID AMOUNT</div>
+    <div class="bid-input-wrap">
+      <span class="dollar-sign">$</span>
+      <input type="number" id="bidAmount" placeholder="0.00" step="0.01" min="0" oninput="calculate()" />
+    </div>
+
+    <!-- Item name + link fields -->
+    <div class="item-fields">
+      <div class="field-wrap">
+        <input type="text" id="itemLink" placeholder="Paste BidFTA item link (optional)" oninput="onLinkInput()" />
+        <div class="link-extracted" id="linkExtracted"></div>
+      </div>
+      <div class="field-wrap">
+        <input type="text" id="itemName" placeholder="Item label / name" maxlength="60" />
+        <div class="field-hint">Optional — helps identify items in your tally</div>
+      </div>
+    </div>
+
+    <!-- Price comparison fields -->
+    <div class="compare-fields">
+      <div class="compare-fields-title">Price Comparison <span>optional</span></div>
+      <div class="compare-row">
+        <div class="field-wrap">
+          <input type="number" id="msrpPrice" placeholder="MSRP (from listing)" step="0.01" min="0" oninput="updateVerdict()" />
+        </div>
+        <div class="field-wrap">
+          <input type="number" id="comparePrice" placeholder="Amazon / Walmart / etc." step="0.01" min="0" oninput="updateVerdict()" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Reverse toggle -->
+    <label class="reverse-toggle" id="reverseToggle" for="reverseCheck">
+      <input type="checkbox" id="reverseCheck" onchange="toggleReverse()" />
+      <div class="toggle-track"></div>
+      <span>Reverse: enter max budget → get max bid</span>
+    </label>
+  </div>
+
+  <!-- Reverse result -->
+  <div class="reverse-result" id="reverseResult">
+    <p>Max bid you can place</p>
+    <strong id="reverseBid">$0.00</strong>
+  </div>
+
+  <!-- Breakdown -->
+  <div class="breakdown">
+    <div class="breakdown-title">Cost Breakdown</div>
+    <div class="breakdown-row">
+      <div class="row-label">Bid Amount</div>
+      <div class="row-value" id="valBid">$0.00</div>
+    </div>
+    <div class="breakdown-row" id="rowPremium">
+      <div class="row-label">Buyer's Premium <small>17.25% of bid</small></div>
+      <div class="row-value" id="valPremium">$0.00</div>
+    </div>
+    <div class="breakdown-row" id="rowFreight">
+      <div class="row-label">Freight Surcharge <small id="freightNote">$1.00 for items ≥ $5</small></div>
+      <div class="row-value" id="valFreight">$0.00</div>
+    </div>
+    <div class="breakdown-row">
+      <div class="row-label">Sub-total</div>
+      <div class="row-value" id="valSubtotal">$0.00</div>
+    </div>
+    <div class="breakdown-row">
+      <div class="row-label">Sales Tax <small>7.5% of sub-total</small></div>
+      <div class="row-value" id="valTax">$0.00</div>
+    </div>
+    <div class="total-row">
+      <div class="total-label">Total You Pay</div>
+      <div class="total-value" id="valTotal">$0.00</div>
+    </div>
+  </div>
+
+  <!-- Deal Verdict -->
+  <div class="verdict-wrap" id="verdictWrap" style="display:none;">
+    <!-- One-liner summary -->
+    <div class="verdict-summary" id="verdictSummary" onclick="toggleVerdict()">
+      <span id="verdictIcon">✓</span>
+      <span id="verdictText">—</span>
+      <span class="verdict-chevron" id="verdictChevron">▶</span>
+    </div>
+    <!-- Collapsible detail -->
+    <div class="verdict-detail" id="verdictDetail">
+      <div class="verdict-detail-row" id="vRowMsrp" style="display:none;">
+        <span class="vd-label">MSRP</span>
+        <span class="vd-value" id="vMsrp">—</span>
+        <span class="vd-saving" id="vMsrpSaving">—</span>
+      </div>
+      <div class="verdict-detail-row" id="vRowCompare" style="display:none;">
+        <span class="vd-label">Best price found</span>
+        <span class="vd-value" id="vCompare">—</span>
+        <span class="vd-saving" id="vCompareSaving">—</span>
+      </div>
+      <div class="verdict-detail-row verdict-detail-you">
+        <span class="vd-label">You pay (with all fees)</span>
+        <span class="vd-value" id="vYouPay">—</span>
+        <span class="vd-saving"></span>
+      </div>
+      <div class="verdict-warranty">
+        ⚠ No warranty or return policy on BidFTA items — factor this in when the savings are slim.
+      </div>
+    </div>
+  </div>
+
+  <!-- Add to Tally -->
+  <button class="add-btn" id="addBtn" onclick="addToTally()" disabled>+ ADD TO SESSION TALLY</button>
+
+  <!-- Session Tally -->
+  <div class="tally-section">
+    <div class="tally-header">
+      <div class="tally-header-label">
+        Session Tally
+        <span class="tally-count-badge" id="tallyCount">0</span>
+      </div>
+      <button class="clear-btn" onclick="clearTally()">Clear all</button>
+    </div>
+
+    <div class="tally-list" id="tallyList">
+      <div class="tally-empty" id="tallyEmpty">
+        No items yet<br>Calculate a bid above and hit + Add
+      </div>
+    </div>
+
+    <div class="tally-grand" id="tallyGrand" style="display:none;">
+      <div class="tally-grand-row">
+        <span class="g-label">Items in tally</span>
+        <span class="g-value" id="grandCount">0</span>
+      </div>
+      <div class="tally-grand-row">
+        <span class="g-label">Total bids placed</span>
+        <span class="g-value" id="grandBids">$0.00</span>
+      </div>
+      <div class="tally-grand-row">
+        <span class="g-label">Total fees &amp; tax</span>
+        <span class="g-value" id="grandFees">$0.00</span>
+      </div>
+      <div class="tally-grand-total-row">
+        <span class="g-label">You will be charged</span>
+        <span class="g-value" id="grandTotal">$0.00</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fee pills -->
+  <div class="info-pills">
+    <div class="pill">Premium <span>17.25%</span></div>
+    <div class="pill">Tax <span>7.5%</span></div>
+    <div class="pill">Freight ≥$5 <span>$1.00</span></div>
+    <div class="pill">Freight &lt;$5 <span>$0.25</span></div>
+  </div>
+
+  <footer>
+    BidFTA Calculator &nbsp;·&nbsp; <a href="https://github.com" target="_blank">View on GitHub</a><br>
+    Fees may change — always verify on bidfta.com
+  </footer>
+</div>
+
+<script>
+  let mode        = 'auction';
+  let reverseMode = false;
+  let isDark      = true;
+  let tallyItems  = [];
+  let lastCalc    = null;
+
+  /* ── THEME ── */
+  function toggleTheme() {
+    isDark = !isDark;
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    document.getElementById('themeIcon').textContent = isDark ? '🌙' : '☀️';
+    document.getElementById('themeTxt').textContent  = isDark ? 'Light mode' : 'Dark mode';
+  }
+
+  /* ── MODE ── */
+  function setMode(m) {
+    mode = m;
+    document.getElementById('btn-auction').classList.toggle('active', m === 'auction');
+    document.getElementById('btn-bins').classList.toggle('active', m === 'bins');
+    if (m === 'bins') {
+      document.getElementById('modeHint').textContent = 'Bins: no premium or freight — just price + 7.5% tax';
+      document.getElementById('rowPremium').style.display = 'none';
+      document.getElementById('rowFreight').style.display  = 'none';
+      document.getElementById('inputLabel').textContent = reverseMode ? 'YOUR MAX BUDGET' : 'BIN ITEM PRICE';
+    } else {
+      document.getElementById('modeHint').textContent = "Auction: includes 17.25% buyer's premium + freight surcharge";
+      document.getElementById('rowPremium').style.display = 'flex';
+      document.getElementById('rowFreight').style.display  = 'flex';
+      document.getElementById('inputLabel').textContent = reverseMode ? 'YOUR MAX BUDGET' : 'YOUR BID AMOUNT';
+    }
+    calculate();
+  }
+
+  /* ── REVERSE ── */
+  function toggleReverse() {
+    reverseMode = document.getElementById('reverseCheck').checked;
+    document.getElementById('reverseToggle').classList.toggle('on', reverseMode);
+    document.getElementById('inputLabel').textContent = reverseMode
+      ? 'YOUR MAX BUDGET'
+      : (mode === 'bins' ? 'BIN ITEM PRICE' : 'YOUR BID AMOUNT');
+    document.getElementById('reverseResult').classList.toggle('show', reverseMode);
+    document.getElementById('bidAmount').value = '';
+    document.getElementById('bidAmount').placeholder = reverseMode ? 'Budget...' : '0.00';
+    lastCalc = null;
+    document.getElementById('addBtn').disabled = true;
+    calculate();
+  }
+
+  /* ── LINK EXTRACTION ── */
+  function onLinkInput() {
+    const raw  = document.getElementById('itemLink').value.trim();
+    const hint = document.getElementById('linkExtracted');
+    const name = document.getElementById('itemName');
+
+    if (!raw) { hint.classList.remove('show'); return; }
+
+    // Try to parse a BidFTA URL slug
+    // e.g. https://www.bidfta.com/items/detail/12345678/blue-samsung-65-inch-tv
+    try {
+      const url  = new URL(raw.startsWith('http') ? raw : 'https://' + raw);
+      const parts = url.pathname.split('/').filter(Boolean);
+      // slug is usually the last segment if it contains letters
+      const slug = parts[parts.length - 1];
+      if (slug && /[a-zA-Z]/.test(slug)) {
+        const extracted = slug
+          .replace(/-/g, ' ')
+          .replace(/\b\w/g, c => c.toUpperCase());
+        name.value = extracted;
+        hint.textContent = '✓ Name extracted from link';
+        hint.classList.add('show');
+        return;
+      }
+    } catch (_) {}
+
+    hint.textContent = 'Could not extract name — type one below';
+    hint.classList.add('show');
+  }
+
+  /* ── HELPERS ── */
+  function fmt(n)   { return '$' + Math.max(0, n).toFixed(2); }
+  function esc(str) {
+    return String(str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function setVal(id, n) {
+    const el = document.getElementById(id);
+    el.textContent = fmt(n);
+    el.className = 'row-value' + (n === 0 ? ' zero' : '');
+  }
+
+  /* ── CALCULATE ── */
+  function calculate() {
+    const raw = parseFloat(document.getElementById('bidAmount').value) || 0;
+    reverseMode ? calcReverse(raw) : calcForward(raw);
+    document.getElementById('addBtn').disabled = !lastCalc || lastCalc.total <= 0;
+    updateVerdict();
+  }
+
+  function calcForward(bid) {
+    let premium = 0, freight = 0, subtotal, tax, total;
+    if (mode === 'auction') {
+      premium  = bid * 0.1725;
+      freight  = bid >= 5 ? 1.00 : (bid > 0 ? 0.25 : 0);
+      subtotal = bid + premium + freight;
+      tax      = subtotal * 0.075;
+      total    = subtotal + tax;
+      document.getElementById('freightNote').textContent =
+        bid >= 5 ? '$1.00 for items ≥ $5' : '$0.25 for items < $5';
+      setVal('valPremium', premium);
+      setVal('valFreight', freight);
+    } else {
+      subtotal = bid; tax = subtotal * 0.075; total = subtotal + tax;
+    }
+    setVal('valBid', bid);
+    setVal('valSubtotal', subtotal);
+    setVal('valTax', tax);
+    document.getElementById('valTotal').textContent = fmt(total);
+    lastCalc = { bid, premium, freight, subtotal, tax, total, fees: total - bid };
+  }
+
+  function calcReverse(budget) {
+    let maxBid = 0, premium = 0, freight = 0, subtotal, tax, total;
+    if (mode === 'bins') {
+      maxBid   = budget / 1.075;
+      subtotal = maxBid; tax = maxBid * 0.075; total = budget;
+      setVal('valBid', maxBid);
+      setVal('valSubtotal', subtotal);
+      setVal('valTax', tax);
+      document.getElementById('valTotal').textContent = fmt(budget);
+    } else {
+      const bid1 = (budget / 1.075 - 1.00) / 1.1725;
+      const bid2 = (budget / 1.075 - 0.25) / 1.1725;
+      if      (bid1 >= 5)            maxBid = bid1;
+      else if (bid2 > 0 && bid2 < 5) maxBid = bid2;
+      else                           maxBid = Math.max(bid1, bid2, 0);
+      premium  = maxBid * 0.1725;
+      freight  = maxBid >= 5 ? 1.00 : (maxBid > 0 ? 0.25 : 0);
+      subtotal = maxBid + premium + freight;
+      tax      = subtotal * 0.075;
+      total    = subtotal + tax;
+      setVal('valBid', maxBid);
+      setVal('valPremium', premium);
+      setVal('valFreight', freight);
+      setVal('valSubtotal', subtotal);
+      setVal('valTax', tax);
+      document.getElementById('valTotal').textContent = fmt(total);
+      document.getElementById('freightNote').textContent =
+        maxBid >= 5 ? '$1.00 for items ≥ $5' : '$0.25 for items < $5';
+    }
+    document.getElementById('reverseBid').textContent = fmt(maxBid);
+    lastCalc = { bid: maxBid, premium, freight, subtotal: subtotal || maxBid, tax, total, fees: total - maxBid };
+  }
+
+  /* ── ADD TO TALLY ── */
+  function addToTally() {
+    if (!lastCalc || lastCalc.total <= 0) return;
+    const n    = tallyItems.length + 1;
+    const name = document.getElementById('itemName').value.trim() || `Item ${n}`;
+    const link = document.getElementById('itemLink').value.trim();
+    const validLink = link && (link.startsWith('http') || link.startsWith('www')) ? link : null;
+
+    tallyItems.push({
+      id: Date.now(),
+      name,
+      link: validLink,
+      type: mode === 'bins' ? 'Bins' : 'Auction',
+      ...lastCalc
+    });
+
+    renderTally();
+
+    // Button feedback
+    const btn = document.getElementById('addBtn');
+    btn.textContent = '✓ ADDED TO TALLY!';
+    btn.style.background = 'var(--teal)';
+    btn.style.color = '#fff';
+    setTimeout(() => {
+      btn.textContent = '+ ADD TO SESSION TALLY';
+      btn.style.background = '';
+      btn.style.color = '';
+    }, 1000);
+
+    // Reset fields
+    document.getElementById('bidAmount').value = '';
+    document.getElementById('itemName').value  = '';
+    document.getElementById('itemLink').value  = '';
+    document.getElementById('linkExtracted').classList.remove('show');
+    lastCalc = null;
+    btn.disabled = true;
+    calculate();
+  }
+
+  /* ── REMOVE ── */
+  function removeItem(id) {
+    tallyItems = tallyItems.filter(i => i.id !== id);
+    renderTally();
+  }
+
+  /* ── CLEAR ── */
+  function clearTally() {
+    if (!tallyItems.length) return;
+    tallyItems = [];
+    renderTally();
+  }
+
+  /* ── TOGGLE ITEM EXPAND ── */
+  function toggleItem(id) {
+    const el = document.getElementById('titem-' + id);
+    if (el) el.classList.toggle('open');
+  }
+
+  /* ── RENDER TALLY ── */
+  function renderTally() {
+    const list  = document.getElementById('tallyList');
+    const grand = document.getElementById('tallyGrand');
+    document.getElementById('tallyCount').textContent = tallyItems.length;
+
+    if (!tallyItems.length) {
+      list.innerHTML = `<div class="tally-empty">No items yet<br>Calculate a bid above and hit + Add</div>`;
+      grand.style.display = 'none';
+      return;
+    }
+
+    list.innerHTML = tallyItems.map(item => {
+      const linkHtml = item.link
+        ? `<a class="tally-item-link" href="${esc(item.link.startsWith('http') ? item.link : 'https://' + item.link)}" target="_blank" rel="noopener" title="Open item" onclick="event.stopPropagation()">↗</a>`
+        : '';
+
+      const showPremium = item.type === 'Auction';
+      const showFreight = item.type === 'Auction';
+
+      return `
+      <div class="tally-item" id="titem-${item.id}">
+        <!-- Summary row -->
+        <div class="tally-item-summary" onclick="toggleItem(${item.id})">
+          <span class="tally-chevron">▶</span>
+          <div class="tally-item-info">
+            <div class="tally-item-name-row">
+              <span class="tally-item-name">${esc(item.name)}</span>
+              ${linkHtml}
+            </div>
+            <div class="tally-item-meta">Bid: ${fmt(item.bid)} · Fees: ${fmt(item.fees)}</div>
+          </div>
+          <span class="tally-type-badge">${esc(item.type)}</span>
+          <div class="tally-item-total">${fmt(item.total)}</div>
+          <button class="tally-remove" onclick="event.stopPropagation(); removeItem(${item.id})" title="Remove">✕</button>
+        </div>
+
+        <!-- Expanded detail -->
+        <div class="tally-item-detail">
+          <div class="detail-row">
+            <span class="detail-label">Bid Amount</span>
+            <span class="detail-value">${fmt(item.bid)}</span>
+          </div>
+          ${showPremium ? `
+          <div class="detail-row">
+            <span class="detail-label">Buyer's Premium (17.25%)</span>
+            <span class="detail-value ${item.premium === 0 ? 'zero' : ''}">${fmt(item.premium)}</span>
+          </div>` : ''}
+          ${showFreight ? `
+          <div class="detail-row">
+            <span class="detail-label">Freight Surcharge</span>
+            <span class="detail-value ${item.freight === 0 ? 'zero' : ''}">${fmt(item.freight)}</span>
+          </div>` : ''}
+          <div class="detail-row">
+            <span class="detail-label">Sub-total</span>
+            <span class="detail-value">${fmt(item.subtotal)}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Sales Tax (7.5%)</span>
+            <span class="detail-value">${fmt(item.tax)}</span>
+          </div>
+          <div class="detail-total-row">
+            <span class="detail-total-label">You Pay</span>
+            <span class="detail-total-value">${fmt(item.total)}</span>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+
+    // Grand totals
+    const grandBids  = tallyItems.reduce((s, i) => s + i.bid,   0);
+    const grandFees  = tallyItems.reduce((s, i) => s + i.fees,  0);
+    const grandTotal = tallyItems.reduce((s, i) => s + i.total, 0);
+
+    document.getElementById('grandCount').textContent  = tallyItems.length;
+    document.getElementById('grandBids').textContent   = fmt(grandBids);
+    document.getElementById('grandFees').textContent   = fmt(grandFees);
+    document.getElementById('grandTotal').textContent  = fmt(grandTotal);
+    grand.style.display = 'block';
+  }
+
+  /* ── VERDICT ── */
+  function updateVerdict() {
+    const total    = lastCalc ? lastCalc.total : 0;
+    const msrp     = parseFloat(document.getElementById('msrpPrice').value)    || 0;
+    const compare  = parseFloat(document.getElementById('comparePrice').value)  || 0;
+    const wrap     = document.getElementById('verdictWrap');
+
+    // Hide if no total or no comparison prices entered
+    if (total <= 0 || (msrp <= 0 && compare <= 0)) {
+      wrap.style.display = 'none';
+      return;
+    }
+    wrap.style.display = 'block';
+
+    // Figure out primary comparison (compare price takes priority over MSRP for verdict)
+    const primary     = compare > 0 ? compare : msrp;
+    const pct         = (total / primary) * 100;   // what % of reference you're paying
+    const savingAmt   = primary - total;
+    const savingPct   = ((primary - total) / primary) * 100;
+
+    // Verdict tier
+    let tier, icon, text;
+    const noWarrantyNote = savingPct < 40;
+
+    if (savingPct >= 60) {
+      tier = 'good'; icon = '✓';
+      text = `Saving ${savingPct.toFixed(0)}% — solid deal`;
+    } else if (savingPct >= 40) {
+      tier = 'good'; icon = '✓';
+      text = `Saving ${savingPct.toFixed(0)}% off ${compare > 0 ? 'best price found' : 'MSRP'}`;
+    } else if (savingPct >= 20) {
+      tier = 'ok'; icon = '~';
+      text = `Saving ${savingPct.toFixed(0)}% — decent, but no warranty to fall back on`;
+    } else if (savingPct >= 0) {
+      tier = 'warn'; icon = '⚠';
+      text = `Only saving ${savingPct.toFixed(0)}% — slim margin with no warranty`;
+    } else {
+      tier = 'bad'; icon = '✗';
+      text = `Paying ${Math.abs(savingPct).toFixed(0)}% MORE than ${compare > 0 ? 'best price found' : 'MSRP'} — not worth it`;
+    }
+
+    // Update summary row
+    const summary = document.getElementById('verdictSummary');
+    summary.className = 'verdict-summary ' + tier;
+    document.getElementById('verdictIcon').textContent = icon;
+    document.getElementById('verdictText').textContent = text;
+
+    // Update detail rows
+    document.getElementById('vYouPay').textContent = fmt(total);
+
+    // MSRP row
+    const rowMsrp = document.getElementById('vRowMsrp');
+    if (msrp > 0) {
+      rowMsrp.style.display = 'grid';
+      document.getElementById('vMsrp').textContent = fmt(msrp);
+      const ms = msrp - total;
+      const mp = ((msrp - total) / msrp * 100);
+      const mEl = document.getElementById('vMsrpSaving');
+      mEl.textContent = ms >= 0 ? `-${mp.toFixed(0)}% (${fmt(ms)})` : `+${Math.abs(mp).toFixed(0)}% over`;
+      mEl.className = 'vd-saving ' + (ms >= 0 ? (mp >= 40 ? 'good' : 'warn') : 'bad');
+    } else {
+      rowMsrp.style.display = 'none';
+    }
+
+    // Compare row
+    const rowCmp = document.getElementById('vRowCompare');
+    if (compare > 0) {
+      rowCmp.style.display = 'grid';
+      document.getElementById('vCompare').textContent = fmt(compare);
+      const cs = compare - total;
+      const cp = ((compare - total) / compare * 100);
+      const cEl = document.getElementById('vCompareSaving');
+      cEl.textContent = cs >= 0 ? `-${cp.toFixed(0)}% (${fmt(cs)})` : `+${Math.abs(cp).toFixed(0)}% over`;
+      cEl.className = 'vd-saving ' + (cs >= 0 ? (cp >= 40 ? 'good' : 'warn') : 'bad');
+    } else {
+      rowCmp.style.display = 'none';
+    }
+  }
+
+  function toggleVerdict() {
+    document.getElementById('verdictWrap').classList.toggle('open');
+  }
+
+  // Init
+  setMode('auction');
+</script>
+</body>
+</html>
