@@ -4,6 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BidFTA Calculator</title>
+  <meta name="theme-color" content="#0d3347" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="BidFTA Calc" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -215,6 +222,54 @@
       display: none;
     }
     .link-extracted.show { display: block; }
+
+    /* ── LINK INPUT ROW ── */
+    .link-input-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .link-input-row input { flex: 1; min-width: 0; }
+    .link-fetch-status {
+      font-size: 0.8rem;
+      flex-shrink: 0;
+      width: 18px;
+      text-align: center;
+      color: var(--teal);
+    }
+    .open-link-btn {
+      background: var(--teal);
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 0.8rem;
+      padding: 7px 10px;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      transition: background 0.2s;
+    }
+    .open-link-btn:hover { background: var(--accent2); }
+    .search-amazon-btn {
+      background: var(--accent);
+      border: none;
+      border-radius: 6px;
+      color: #0b1f2a;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 7px 10px;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+      transition: background 0.2s;
+    }
+    .search-amazon-btn:hover { background: var(--accent2); }
+    .search-amazon-btn::before { content: "🔍"; font-size: 0.8rem; }
 
     /* ── REVERSE TOGGLE ── */
     .reverse-toggle {
@@ -775,11 +830,19 @@
     <!-- Item name + link fields -->
     <div class="item-fields">
       <div class="field-wrap">
-        <input type="text" id="itemLink" placeholder="Paste BidFTA item link (optional)" oninput="onLinkInput()" />
+        <div class="link-input-row">
+          <input type="text" id="itemLink" placeholder="Paste BidFTA link — name auto-fills" oninput="onBidFTALinkInput()" />
+          <div class="link-fetch-status" id="bidfta-status"></div>
+        </div>
         <div class="link-extracted" id="linkExtracted"></div>
       </div>
       <div class="field-wrap">
-        <input type="text" id="itemName" placeholder="Item label / name" maxlength="60" />
+        <div class="link-input-row">
+          <input type="text" id="itemName" placeholder="Item name — auto-filled or type your own" maxlength="60" oninput="this.dataset.autoFilled='false'; toggleAmazonSearchBtn()" />
+          <button class="search-amazon-btn" id="amazonSearchBtn" onclick="searchAmazon()" title="Search this item on Amazon" style="display:none;">
+            Search Amazon
+          </button>
+        </div>
         <div class="field-hint">Optional — helps identify items in your tally</div>
       </div>
     </div>
@@ -787,13 +850,18 @@
     <!-- Price comparison fields -->
     <div class="compare-fields">
       <div class="compare-fields-title">Price Comparison <span>optional</span></div>
-      <div class="compare-row">
-        <div class="field-wrap">
-          <input type="number" id="msrpPrice" placeholder="MSRP (from listing)" step="0.01" min="0" oninput="updateVerdict()" />
+      <div class="field-wrap" style="margin-bottom:8px;">
+        <input type="number" id="msrpPrice" placeholder="MSRP (from BidFTA listing)" step="0.01" min="0" oninput="updateVerdict()" />
+      </div>
+      <div class="field-wrap" style="margin-bottom:8px;">
+        <div class="link-input-row">
+          <input type="text" id="amazonLink" placeholder="Amazon / Walmart link (opens for you to check price)" oninput="onAmazonLinkInput()" />
+          <button class="open-link-btn" id="amazonOpenBtn" onclick="openAmazonLink()" style="display:none;" title="Open link">↗</button>
         </div>
-        <div class="field-wrap">
-          <input type="number" id="comparePrice" placeholder="Amazon / Walmart / etc." step="0.01" min="0" oninput="updateVerdict()" />
-        </div>
+        <div class="field-hint" id="amazonLinkHint">Paste a link → opens in new tab so you can grab the price</div>
+      </div>
+      <div class="field-wrap">
+        <input type="number" id="comparePrice" placeholder="Price found (enter after checking)" step="0.01" min="0" oninput="updateVerdict()" />
       </div>
     </div>
 
@@ -973,34 +1041,188 @@
     calculate();
   }
 
-  /* ── LINK EXTRACTION ── */
-  function onLinkInput() {
-    const raw  = document.getElementById('itemLink').value.trim();
-    const hint = document.getElementById('linkExtracted');
-    const name = document.getElementById('itemName');
+  /* ── BIDFTA LINK: fetch name via official API ── */
+  // URL format: bidfta.com/{auctionId}/item-detail/{itemId}
+  // API format: auction.api.bidfta.io/v2/api/item/itemDetails/{auctionId}/{itemId}
 
-    if (!raw) { hint.classList.remove('show'); return; }
+  let bidftaFetchTimer = null;
 
-    // Try to parse a BidFTA URL slug
-    // e.g. https://www.bidfta.com/items/detail/12345678/blue-samsung-65-inch-tv
+  function parseBidFTAIds(raw) {
     try {
-      const url  = new URL(raw.startsWith('http') ? raw : 'https://' + raw);
+      const url   = new URL(raw.startsWith('http') ? raw : 'https://' + raw);
       const parts = url.pathname.split('/').filter(Boolean);
-      // slug is usually the last segment if it contains letters
-      const slug = parts[parts.length - 1];
-      if (slug && /[a-zA-Z]/.test(slug)) {
-        const extracted = slug
-          .replace(/-/g, ' ')
-          .replace(/\b\w/g, c => c.toUpperCase());
-        name.value = extracted;
-        hint.textContent = '✓ Name extracted from link';
-        hint.classList.add('show');
-        return;
+      // Expect: /{auctionId}/item-detail/{itemId}
+      const detailIdx = parts.indexOf('item-detail');
+      if (detailIdx !== -1 && detailIdx > 0) {
+        const auctionId = parts[detailIdx - 1];
+        const itemId    = parts[detailIdx + 1];
+        if (auctionId && itemId && /^\d+$/.test(auctionId) && /^\d+$/.test(itemId)) {
+          return { auctionId, itemId };
+        }
       }
     } catch (_) {}
+    return null;
+  }
 
-    hint.textContent = 'Could not extract name — type one below';
+  function onBidFTALinkInput() {
+    const raw    = document.getElementById('itemLink').value.trim();
+    const hint   = document.getElementById('linkExtracted');
+    const status = document.getElementById('bidfta-status');
+
+    if (!raw) {
+      hint.classList.remove('show');
+      status.textContent = '';
+      return;
+    }
+
+    if (!raw.includes('bidfta.com')) {
+      hint.textContent = 'Paste a bidfta.com link';
+      hint.classList.add('show');
+      status.textContent = '';
+      return;
+    }
+
+    const ids = parseBidFTAIds(raw);
+    if (!ids) {
+      hint.textContent = 'Could not read link format — type a name below';
+      hint.classList.add('show');
+      status.textContent = '✗';
+      return;
+    }
+
+    // Debounce — wait until user stops typing
+    clearTimeout(bidftaFetchTimer);
+    status.textContent = '⏳';
+    hint.textContent = 'Looking up item…';
     hint.classList.add('show');
+    bidftaFetchTimer = setTimeout(() => fetchBidFTAName(ids), 600);
+  }
+
+  async function fetchBidFTAName({ auctionId, itemId }) {
+    const hint   = document.getElementById('linkExtracted');
+    const status = document.getElementById('bidfta-status');
+    const nameEl = document.getElementById('itemName');
+    const msrpEl = document.getElementById('msrpPrice');
+
+    const apiUrl = `https://auction.api.bidfta.io/v2/api/item/itemDetails/${auctionId}/${itemId}`;
+
+    try {
+      const res = await fetch(apiUrl, {
+        headers: { 'Accept': 'application/json' }
+      });
+      if (!res.ok) throw new Error('API error ' + res.status);
+
+      const raw  = await res.text();
+      let title = '', msrp = 0, currentBid = 0;
+
+      // Try JSON first (what JS fetch usually gets)
+      try {
+        const data = JSON.parse(raw);
+        title      = data.title || data.itemName || data.name || data.item?.title || '';
+        msrp       = parseFloat(data.msrp)       || 0;
+        currentBid = parseFloat(data.currentBid) || 0;
+      } catch (_) {
+        // Fall back to XML parsing
+        const parser = new DOMParser();
+        const xml    = parser.parseFromString(raw, 'application/xml');
+        const getTag = (tag) => {
+          const els = xml.getElementsByTagName(tag);
+          return els.length > 0 ? els[0].textContent.trim() : '';
+        };
+        title      = getTag('title');
+        msrp       = parseFloat(getTag('msrp'))       || 0;
+        currentBid = parseFloat(getTag('currentBid')) || 0;
+      }
+
+      // Auto-fill item name
+      if (title && title.length > 2) {
+        if (!nameEl.value || nameEl.dataset.autoFilled === 'true') {
+          nameEl.value = title;
+          nameEl.dataset.autoFilled = 'true';
+        }
+        toggleAmazonSearchBtn();
+      }
+
+      // Auto-fill MSRP if it's a real value
+      if (msrp > 0) {
+        msrpEl.value = msrp.toFixed(2);
+        updateVerdict();
+      }
+
+      // Auto-fill bid amount if field is empty
+      if (currentBid > 0) {
+        const bidEl = document.getElementById('bidAmount');
+        if (!bidEl.value) {
+          bidEl.value = currentBid.toFixed(2);
+          calculate();
+        }
+      }
+
+      // Build hint message
+      const parts = [];
+      if (title)      parts.push('name');
+      if (msrp > 0)   parts.push('MSRP');
+      if (currentBid > 0) parts.push('current bid');
+      const loaded = parts.length ? `✓ Loaded: ${parts.join(', ')} — hit Search Amazon to compare` : 'Got response but no useful data — fill in manually';
+
+      status.textContent = parts.length ? '✓' : '?';
+      hint.textContent   = loaded;
+
+    } catch (err) {
+      status.textContent = '✗';
+      hint.textContent   = 'Could not fetch — type details manually';
+      console.warn('BidFTA API error:', err);
+    }
+    hint.classList.add('show');
+  }
+
+  /* ── AMAZON SEARCH ── */
+  function toggleAmazonSearchBtn() {
+    const name = document.getElementById('itemName').value.trim();
+    const btn  = document.getElementById('amazonSearchBtn');
+    btn.style.display = name.length > 2 ? 'flex' : 'none';
+  }
+
+  function searchAmazon() {
+    const name = document.getElementById('itemName').value.trim();
+    if (!name) return;
+    const query = encodeURIComponent(name);
+    window.open('https://www.amazon.com/s?k=' + query, '_blank', 'noopener');
+  }
+
+  /* ── AMAZON / COMPARE LINK ── */
+  let amazonLinkValue = '';
+
+  function onAmazonLinkInput() {
+    const raw    = document.getElementById('amazonLink').value.trim();
+    const btn    = document.getElementById('amazonOpenBtn');
+    const hint   = document.getElementById('amazonLinkHint');
+    amazonLinkValue = raw;
+
+    if (!raw) {
+      btn.style.display = 'none';
+      hint.textContent  = 'Paste a link → opens in new tab so you can grab the price';
+      return;
+    }
+
+    const isValid = raw.includes('.com') || raw.startsWith('http');
+    if (isValid) {
+      btn.style.display = 'flex';
+      hint.textContent  = '✓ Link saved — hit ↗ to open and check the price, then enter it below';
+      // Auto-open once when pasted
+      if (!raw.endsWith('/') && raw.length > 15) {
+        openAmazonLink();
+      }
+    } else {
+      btn.style.display = 'none';
+      hint.textContent  = 'Paste a valid link';
+    }
+  }
+
+  function openAmazonLink() {
+    if (!amazonLinkValue) return;
+    const url = amazonLinkValue.startsWith('http') ? amazonLinkValue : 'https://' + amazonLinkValue;
+    window.open(url, '_blank', 'noopener');
   }
 
   /* ── HELPERS ── */
@@ -1112,7 +1334,16 @@
     document.getElementById('bidAmount').value = '';
     document.getElementById('itemName').value  = '';
     document.getElementById('itemLink').value  = '';
+    document.getElementById('amazonLink').value = '';
+    document.getElementById('amazonOpenBtn').style.display = 'none';
+    document.getElementById('amazonLinkHint').textContent = 'Paste a link → opens in new tab so you can grab the price';
     document.getElementById('linkExtracted').classList.remove('show');
+    document.getElementById('bidfta-status').textContent = '';
+    amazonLinkValue = '';
+    document.getElementById('amazonSearchBtn').style.display = 'none';
+    document.getElementById('msrpPrice').value = '';
+    document.getElementById('comparePrice').value = '';
+    updateVerdict();
     lastCalc = null;
     btn.disabled = true;
     calculate();
@@ -1303,6 +1534,14 @@
 
   // Init
   setMode('auction');
+
+  // Register service worker for PWA
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .catch(err => console.warn('SW registration failed:', err));
+    });
+  }
 </script>
 </body>
 </html>
